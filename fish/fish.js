@@ -336,7 +336,6 @@ $(document).ready(function() {
         }
     }, false);
     var touchEndHandler = function(e) {
-        e.preventDefault();
         for (let touch of e.changedTouches) {
             for (let i = 0; i < currentTouches.length; i++) {
                 if (touch.identifier == currentTouches[i].identifier) {
