@@ -320,16 +320,22 @@ $(document).ready(function() {
     });
 
     document.addEventListener("touchstart", e => {
-        e.preventDefault();
         var touches = e.changedTouches;
         for (let touch of touches) {
             currentTouches.push(touch);
         }
     }, false);
     document.addEventListener("touchmove", e => {
-        e.preventDefault();
-    });
-    document.addEventListener("touchend touchcancel", e => {
+        for (let touch of e.changedTouches) {
+            for (let i = 0; i < currentTouches.length; i++) {
+                if (touch.identifier == currentTouches[i].identifier) {
+                    currentTouches[i] = touch;
+                    break;
+                }
+            }
+        }
+    }, false);
+    var touchEndHandler = function(e) {
         e.preventDefault();
         for (let touch of e.changedTouches) {
             for (let i = 0; i < currentTouches.length; i++) {
@@ -339,7 +345,9 @@ $(document).ready(function() {
                 }
             }
         }
-    }, false);
+    }
+    document.addEventListener("touchend", touchEndHandler, false);
+    document.addEventListener("touchcancel", touchEndHandler, false);
 
     $("#schemes>li").click(function() {
         options.COLOR_SCHEME = $(this).index();
