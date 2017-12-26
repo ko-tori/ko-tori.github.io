@@ -4,6 +4,7 @@
 <head>
     <title>Fish Swarm Simulator</title>
     <style>
+    /*Disclaimer: jank css*/
     html,
     body {
         width: 100%;
@@ -12,12 +13,99 @@
         border: 0;
         overflow: hidden;
         display: block;
+        font-family: "Trebuchet MS", sans-serif;
+    }
+
+    #toolbox {
+        position: absolute;
+        right: 10px;
+        padding: 16px;
+        top: 20px;
+        border: 3px solid black;
+        border-radius: 10px;
+        background-color: #DDD;
+        user-select: none;
+        opacity: 0.1;
+        transition: opacity 0.2s;
+    }
+
+    #toolbox:hover {
+        opacity: 1;
+    }
+
+    .option {
+        cursor: pointer;
+    }
+    ul {
+        margin: 0;
+    }
+    .selected {
+        font-weight: bold;
+    }
+    .info{
+        display: none;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        vertical-align: middle;
+    }
+    #infoback {
+        background-color: #000;
+        opacity: 0.5;
+        margin: 0px;
+        border: 0;
+    }
+    #closeinfo {
+        cursor: pointer;
+        position: absolute;
+        bottom: 0;
+        width: 50%;
+        left: 50%;
+        margin: 16px -25%;
+    }
+    #info {
+        top: 50%;
+        left: 50%;
+        height: 30%;
+        width: 50%;
+        margin: -15% 0 0 -25%;
+        border: 3px solid #333;
+        border-radius: 10px;
+        background-color: #EEE;
+        padding: 20px 40px;
+        overflow: auto;
+        overflow-x: hidden;
     }
     </style>
 </head>
 
 <body>
     <canvas id="canvas"></canvas>
+    <div id="toolbox">
+        Color Scheme
+        <ul id="schemes">
+            <li class="option selected">Monochrome</li>
+            <li class="option">Density 1</li>
+            <li class="option">Density 2</li>
+            <li class="option">Density 3</li>
+            <li class="option">Density 4</li>
+            <li class="option">Orientation</li>
+            <li class="option">Speed</li>
+        </ul>
+        <div class="option" id="rhtoggle">Toggle Region Highlighting</div>
+        <div class="option" id="about">About</div>
+    </div>
+    <div class="info" id="infoback"></div>
+    <div class="info" id="info">
+        <b>About</b>
+        <p>Inspired by the movement of the fish at Xel-Ha Park. Since fish likely don't care about fish that are further away, this simulation uses a storage method that allows calculations to be made regarding fish and only their closer neighbors. The regions the screen is separated into can be observed by toggling Region Highlighting. Fish behavior is dictated as follows: fish try to orient to be like their nearest neighbor; fish accelerate forward in the direction they are facing; fish move away from fish that are too close.</p>
+        <p>Controls: Left click and hold to scare the fish. More options are available in the sidebar</p>
+        <p id="closeinfo"><i>Close</i></p>
+    </div>
+
     <script src="jquery.min.js"></script>
     <script src="fish.js"></script>
 </body>

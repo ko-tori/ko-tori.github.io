@@ -8,13 +8,19 @@ var windowWidth;
 var windowHeight;
 
 var regions = [];
+var fishCount = 5000;
+var maxNearby = fishCount;
+var avgSpeed = 0;
 
 const REGION_SIZE = 100;
-const FISH_LENGTH = 10;
-const FISH_WIDTH = 2.5;
+const FISH_LENGTH = 15;
+const FISH_WIDTH = 4;
 
-// debug
-const REGION_HIGHLIGHTING = true;
+var options = {
+    REGION_HIGHLIGHTING: false,
+    COLOR_SCHEME: 0,
+    MOUSE_RANGE: REGION_SIZE
+}
 
 Number.prototype.mod = function(n) {
     return ((this % n) + n) % n;
@@ -26,10 +32,17 @@ var numberGen = function() {
     return n;
 };
 
+var magnitude = function(v) {
+    return Math.sqrt(v[0] * v[0] + v[1] * v[1]);
+};
+
 var distance = function(p1, p2) {
-    let d = Math.sqrt((p1[0] - p2[0]) * (p1[0] - p2[0]) + (p1[1] - p2[1]) * (p1[1] - p2[1]));
-    //if (isNaN(d)) console.log(p1, p2, d)
-    return d;
+    return magnitude([p1[0] - p2[0], p1[1] - p2[1]]);
+};
+
+var angleDifference = function(a, b) {
+    return Math.atan2(Math.sin(a - b), Math.cos(a - b));
+    return (Math.PI - Math.abs(Math.abs(a - b) - Math.PI)) * Math.sign();
 };
 
 var addFish = function(fish) {
@@ -43,10 +56,15 @@ var addFish = function(fish) {
 };
 
 var update = function() {
+    fishCount = 0;
+    maxNearby = 0;
+    let totalSpeed = 0;
     for (let i = 0; i < regions.length; i++) {
         for (let j = 0; j < regions[0].length; j++) {
             for (let k = 0; k < regions[i][j].length; k++) {
                 let fish = regions[i][j][k];
+                fishCount++;
+                fish.nearby = 0;
                 if (isNaN(fish.position[0])) console.log(fish)
 
                 for (let di = -1; di <= 1; di++) {
@@ -72,30 +90,37 @@ var update = function() {
                         }
                         let minDist = REGION_SIZE;
                         let minDistFish;
+
                         for (let fish2 of regions[i2][j2]) {
                             if (fish == fish2) continue;
                             let d = distance(fish.position, [fish2.position[0] + dx, fish2.position[1] + dy]);
-                            
+
                             if (d < REGION_SIZE) {
+                                fish.nearby++;
                                 if (d < minDist) {
                                     minDist = d;
                                     minDistFish = fish2;
                                 }
 
                                 if (d < FISH_LENGTH * 1.5) {
-                                    fish.velocity[0] += Math.max(-0.01, Math.min(0.01, (fish.position[0] - fish2.position[0]) / d / d * 0.1));
-                                    fish.velocity[1] += Math.max(-0.01, Math.min(0.01, (fish.position[1] - fish2.position[1]) / d / d * 0.1));
+                                    fish.velocity[0] += Math.max(-0.05, Math.min(0.05, (fish.position[0] - fish2.position[0]) / d / d * 0.1));
+                                    fish.velocity[1] += Math.max(-0.05, Math.min(0.05, (fish.position[1] - fish2.position[1]) / d / d * 0.1));
                                 }
                             }
                         }
-                        if (Math.random() < 0.2) {
-                            if (minDistFish) fish.angularv = (minDistFish.rotation - fish.rotation) / 50;
-                        } else {
-                            if (minDistFish) fish.angularv = (Math.PI - Math.abs(Math.abs(minDistFish.rotation - fish.rotation) - Math.PI)) / 100;
+                        // if (minDistFish) fish.angularv = (minDistFish.rotation - fish.rotation) / 50;
+                        if (minDistFish) {
+                            fish.angularv = angleDifference(minDistFish.rotation, fish.rotation) / 50;
+                            fish.velocity[0] += (minDistFish.velocity[0] - fish.velocity[0]) / 100;
+                            fish.velocity[1] += (minDistFish.velocity[1] - fish.velocity[1]) / 100;
                         }
                         // used to be an issue in cases where rotations were being compared like 10 and 350 would be 340 when it should be 20.
                     }
                 }
+
+                if (fish.nearby > maxNearby) maxNearby = fish.nearby;
+                let speed = magnitude(fish.velocity);
+                totalSpeed += speed;
 
                 fish.position[0] += fish.velocity[0];
                 fish.position[1] += fish.velocity[1];
@@ -105,8 +130,16 @@ var update = function() {
                 fish.velocity[0] *= 0.95;
                 fish.velocity[1] *= 0.95;
 
-                fish.velocity[0] += 0.03 * Math.cos(fish.rotation);
-                fish.velocity[1] += 0.03 * Math.sin(fish.rotation);
+                fish.velocity[0] += 0.08 * Math.cos(fish.rotation);
+                fish.velocity[1] += 0.08 * Math.sin(fish.rotation);
+
+                let d = distance(fish.position, [mouseX, mouseY]);
+                if (mouseDown && d < options.MOUSE_RANGE) {
+                    fish.rotation += angleDifference(Math.atan2(fish.position[1] - mouseY, fish.position[0] - mouseX), fish.rotation) / 10;
+                    fish.velocity[0] += Math.min(0.1, 20 / d * Math.cos(fish.rotation));
+                    fish.velocity[1] += Math.min(0.1, 20 / d * Math.sin(fish.rotation));
+                }
+
 
                 if (fish.position[0] > (i + 1) * REGION_SIZE ||
                     fish.position[0] < i * REGION_SIZE ||
@@ -128,6 +161,7 @@ var update = function() {
             }
         }
     }
+    avgSpeed = totalSpeed / fishCount;
 };
 
 var drawFish = function(ctx, x, y, dx, dy) {
@@ -143,7 +177,6 @@ var render = function() {
     ctx.clearRect(0, 0, windowWidth, windowHeight);
 
     ctx.save();
-    //ctx.translate(-FISH_LENGTH, -FISH_LENGTH);
 
     ctx.lineCap = "round";
     ctx.globalAlpha = 1;
@@ -151,7 +184,7 @@ var render = function() {
 
     let mouseRegionX = Math.floor(mouseX / REGION_SIZE),
         mouseRegionY = Math.floor(mouseY / REGION_SIZE);
-    if (REGION_HIGHLIGHTING) {
+    if (options.REGION_HIGHLIGHTING) {
         ctx.fillStyle = "#FEE";
         ctx.fillRect(mouseRegionX * REGION_SIZE, mouseRegionY * REGION_SIZE, REGION_SIZE, REGION_SIZE);
     }
@@ -161,11 +194,32 @@ var render = function() {
 
     for (let i = 0; i < regions.length; i++) {
         for (let j = 0; j < regions[0].length; j++) {
-            if (REGION_HIGHLIGHTING)
+            if (options.REGION_HIGHLIGHTING)
                 ctx.lineWidth = mouseRegionX == i && mouseRegionY == j ? FISH_WIDTH * 1.5 : FISH_WIDTH;
             for (let k = 0; k < regions[i][j].length; k++) {
                 let fish = regions[i][j][k];
-                ctx.strokeStyle = fish.color;
+                let hue = 256; // fallback
+                switch (options.COLOR_SCHEME) {
+                    case 1:
+                        hue = 120 * (1 - Math.max(0, Math.min(1, fish.nearby / maxNearby)));
+                        break;
+                    case 2:
+                        hue = 120 * (1 - Math.pow(Math.max(0, Math.min(1, fish.nearby / maxNearby)), 2));
+                        break;
+                    case 3:
+                        hue = 240 * (Math.max(0, Math.min(1, fish.nearby / maxNearby))) + 120;
+                        break;
+                    case 4:
+                        hue = 180 * (Math.max(0, Math.min(1, fish.nearby / maxNearby))) + 180;
+                        break;
+                    case 5:
+                        hue = fish.rotation * 180 / Math.PI;
+                        break;
+                    case 6:
+                        hue = 120 * (1 - Math.pow(Math.min(1, magnitude(fish.velocity) / avgSpeed / 2), 2));
+                        break;
+                }
+                ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
                 let dx = FISH_LENGTH / 2 * Math.cos(fish.rotation),
                     dy = FISH_LENGTH / 2 * Math.sin(fish.rotation);
                 drawFish(ctx, ...fish.position, dx, dy);
@@ -187,18 +241,20 @@ var render = function() {
 var frame = function() {
     update();
     render();
-    if (!keyMap[32]) requestAnimationFrame(frame);
+    requestAnimationFrame(frame);
 }
 
 var initFish = function() {
-    for (let i = 0; i < 2000; i++) {
+    for (let i = 0; i < fishCount; i++) {
         addFish({
             position: [(Math.random() * 0.5 + 0.25) * windowWidth, (Math.random() * 0.5 + 0.25) * windowHeight],
             //[Math.random() * regions.length * REGION_SIZE, Math.random() * regions[0].length * REGION_SIZE],
             velocity: [0, 0], //[(Math.random() - 0.5), (Math.random() - 0.5)],
             rotation: Math.random() * (2 * Math.PI),
             angularv: 0, //(Math.random() - 0.5) * 0.01,
-            color: "#008",
+            //color: "#008",
+            big: false,
+            nearby: 0,
             needsUpdate: false
         });
     }
@@ -254,6 +310,24 @@ $(document).ready(function() {
     document.addEventListener("mouseup", e => {
         mouseDown = false;
     });
+
+    $("#schemes>li").click(function() {
+        options.COLOR_SCHEME = $(this).index();
+        $("#schemes>li").removeClass("selected");
+        $(this).addClass("selected");
+    });
+
+    $("#rhtoggle").click(function() {
+        options.REGION_HIGHLIGHTING = !options.REGION_HIGHLIGHTING;
+    });
+
+    $("#about").click(function() {
+        $(".info").fadeIn();
+        $("#infoback, #closeinfo").click(function() {
+            $(".info").fadeOut();
+        });
+    });
+
 
     initFish();
     requestAnimationFrame(frame);
