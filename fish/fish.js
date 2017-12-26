@@ -8,7 +8,7 @@ var windowWidth;
 var windowHeight;
 
 var regions = [];
-var fishCount = 5000;
+var fishCount = 1000;
 var maxNearby = fishCount;
 var avgSpeed = 0;
 
