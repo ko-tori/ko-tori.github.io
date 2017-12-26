@@ -3,6 +3,7 @@ var keyMap = Array(256);
 var mouseX = 0;
 var mouseY = 0;
 var mouseDown = false;
+var currentTouches = [];
 
 var windowWidth;
 var windowHeight;
@@ -139,7 +140,14 @@ var update = function() {
                     fish.velocity[0] += Math.min(0.1, 20 / d * Math.cos(fish.rotation));
                     fish.velocity[1] += Math.min(0.1, 20 / d * Math.sin(fish.rotation));
                 }
-
+                for (let touch of currentTouches) {
+                    let d = distance(fish.position, [touch.clientX, touch.clientY]);
+                    if (d < options.MOUSE_RANGE) {
+                        fish.rotation += angleDifference(Math.atan2(fish.position[1] - touch.clientY, fish.position[0] - touch.clientX), fish.rotation) / 10;
+                        fish.velocity[0] += Math.min(0.1, 20 / d * Math.cos(fish.rotation));
+                        fish.velocity[1] += Math.min(0.1, 20 / d * Math.sin(fish.rotation));
+                    }
+                }
 
                 if (fish.position[0] > (i + 1) * REGION_SIZE ||
                     fish.position[0] < i * REGION_SIZE ||
@@ -311,6 +319,28 @@ $(document).ready(function() {
         mouseDown = false;
     });
 
+    document.addEventListener("touchstart", e => {
+        e.preventDefault();
+        var touches = e.changedTouches;
+        for (let touch of touches) {
+            currentTouches.push(touch);
+        }
+    }, false);
+    document.addEventListener("touchmove", e => {
+        e.preventDefault();
+    });
+    document.addEventListener("touchend touchcancel", e => {
+        e.preventDefault();
+        for (let touch of e.changedTouches) {
+            for (let i = 0; i < currentTouches.length; i++) {
+                if (touch.identifier == currentTouches[i].identifier) {
+                    currentTouches.splice(i, 1);
+                    break;
+                }
+            }
+        }
+    }, false);
+
     $("#schemes>li").click(function() {
         options.COLOR_SCHEME = $(this).index();
         $("#schemes>li").removeClass("selected");
@@ -327,7 +357,6 @@ $(document).ready(function() {
             $(".info").fadeOut();
         });
     });
-
 
     initFish();
     requestAnimationFrame(frame);
