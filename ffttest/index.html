@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>FFT pitch shift test</title>
+</head>
+
+<body>
+	<button id="down">-</button>
+	<button id="up">+</button><br><br>
+	<button id="play">Play</button>
+	<button id="stop">Stop</button>
+	<button id="reset">Reset</button>
+    <script src="KissFFT.js"></script>
+    <script src="FFT.js"></script>
+    <script type="text/javascript">
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var source;
+    function getData() {
+        source = audioCtx.createBufferSource();
+        var request = new XMLHttpRequest();
+
+        request.open('GET', 'ly.ogg', true);
+
+        request.responseType = 'arraybuffer';
+
+
+        request.onload = function() {
+            var audioData = request.response;
+
+            audioCtx.decodeAudioData(audioData, function(buffer) {
+                    source.buffer = buffer;
+
+                    source.connect(audioCtx.destination);
+                    source.loop = true;
+                    source.start();
+                },
+
+                function(e) { console.log("Error with decoding audio data" + e.err); });
+
+        }
+
+        request.send();
+    }
+
+    function restart() {
+    	var buffer = source.buffer;
+    	source = audioCtx.createBufferSource();
+    	source.buffer = buffer;
+    	source.connect(audioCtx.destination);
+        source.loop = true;
+        source.start();
+    }
+
+    function shift(n) {
+    	let buffer = source.buffer.getChannelData(0);
+    	let fft = new KissFFT(buffer.length);
+    	let t = fft.forward(buffer);
+    	let out = new Float32Array(t);
+    	for (let i = 0; i < t.length; i++) {
+			if (i + n < 0 || i + n >= out.length) {
+				out[i] = 0;
+			} else {
+				out[i] = t[i+n];
+			}
+		}
+  //   	for (let i = out.length - 1; i >= n; i--) { 
+		// 	out[i-n] = out[i];
+		// }
+		// for (let i = n - 1; i >= 0; i--) {
+		// 	out[i] = 0;
+		// }
+		out = fft.inverse(out);
+		let total = 0;
+		for (let i = 0; i < out.length; i++) {
+			total += Math.abs(out[i]);	
+		}
+		let avg = total / out.length;
+		 for (let i = 0; i < out.length; i++) {
+		 	out[i] /= 100 * avg;
+		 }
+		console.log(out, avg);
+		source.buffer.copyToChannel(new Float32Array(out), 0);
+
+    }
+
+    document.getElementById("up").onclick = (e) => { shift(1000); };
+    document.getElementById("down").onclick = (e) => { shift(-1000); };
+    document.getElementById("reset").onclick = (e) => { source.stop(); getData(); };
+    document.getElementById("play").onclick = (e) => { restart(); };
+    document.getElementById("stop").onclick = (e) => { source.stop(); };
+
+    getData();
+    </script>
+</body>
+
+</html>
