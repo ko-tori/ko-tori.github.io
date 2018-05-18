@@ -44,6 +44,7 @@
     }
 
     function restart() {
+        source.stop();
     	var buffer = source.buffer;
     	source = audioCtx.createBufferSource();
     	source.buffer = buffer;
